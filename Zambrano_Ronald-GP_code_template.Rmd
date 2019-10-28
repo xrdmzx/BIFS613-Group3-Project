@@ -1,0 +1,321 @@
+---
+title: "Group Project"
+author: "First Last"
+date: "09/01/2019"
+output:
+  pdf_document: default
+  word_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+Notes: 
+  - You do not have to put all of your team members' code into a single file. I have included all 5 analyses just for your information. You only need the code for your analysis.
+  - The tasks include both coding and written interpretation. 
+  - Please knit to word document -- it will make it easier to combine your results with your team members in to the single manuscript (submitted in GP4).
+
+## Setup
+
+### Load packages
+
+Add whatever additional packages you need for your analysis
+
+```{r setup, include=FALSE}
+### EDIT!!
+
+### We use the code chunk option "include=FALSE" because we don't need to print this information
+include=FALSE
+
+### Global knitr options
+knitr::opts_chunk$set(echo = TRUE)
+
+### Load packages/libraries that we will need
+library(tidyverse)
+#  edit! Add whatever additional packages you need here (if you haven't loaded them, RMarkdown should alert you when you go to "knit" the RMarkdown to a report)
+```
+
+
+### Custom ggplot theme
+
+So that we don't need to add this code to all ggplots individually. Feel free to use or not use, and to modify however you wish.
+
+```{r theme}
+### DON'T EDIT CODE IN THIS CHUNK
+
+theme_custom <- theme_bw() +
+  
+  # if we have a plot title or subtitle, let's center it
+  theme (
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  ) 
+theme_set(theme_custom)
+
+### We'll make the viridis color scale our default plotting color palette
+scale_colour_continuous <- function(...) {
+  scale_colour_viridis_c(...)
+}
+scale_fill_continuous <- function(...) {
+  scale_fill_viridis_c(...)
+}
+scale_colour_discrete <- function(...) {
+  scale_colour_viridis_d(..., begin = 0, end = 0.9)
+}
+scale_fill_discrete <- function(...) {
+  scale_fill_viridis_d(..., begin = 0, end = 0.9)
+}
+```
+
+
+### Setwd fix (if needed)
+
+If you are having trouble loading the exprs_tidy file below, manually override the working directory. To do this
+  1. In the menu bar, click: Session > Set Working Directory > To Source File Location
+  2. Copy the line of code in the console, and paste it into the code chunk below
+  
+```{r fix_setwd}
+### EDIT if necessary
+setwd("~/Documents/School/BIFS613/BIFS613- Group Project")
+```
+
+
+### FYI: how I got the data
+
+```{r get_data, eval=FALSE}
+### Get list of available datasets
+### https://www.bioconductor.org/packages/3.3/bioc/vignettes/TCGAbiolinks/inst/doc/tcgaBiolinks.html#harmonized-data-1
+View(getGDCprojects())
+
+### Datasets to use for group project (I picked the ones with smallest sample size and no sex bias)
+projects <- c(
+  "TCGA-ACC",
+  "TCGA-CHOL", 
+  "TCGA-DLBC", 
+  "TCGA-KICH", 
+  "TCGA-MESO", 
+  "TCGA-UVM"
+)
+
+phenoList <-  vector(mode = "list", length = length(projects))
+names(phenoList) <- projects
+exprsList <-  vector(mode = "list", length = length(projects))
+names(exprsList) <- projects
+for (i in projects) { 
+  ### Get data (in summarized experiment ["se"]  format)
+  query <- GDCquery(
+    project = i, 
+    data.category = "Transcriptome Profiling", 
+    data.type = "Gene Expression Quantification", 
+    workflow.type = "HTSeq - FPKM"
+  )
+  GDCdownload(query)
+  se <- GDCprepare(query)
+  
+  ### Extract phenoData and remove columns that either are all different or all consistent
+  pheno_full <- as.data.frame(colData(se))
+  pheno <- janitor::remove_constant(pheno_full)
+  
+  ### Extract exprs matrix and remove lowly expressed
+  exprs_full <- assay(se)
+  keep <- rowSums(exprs_full > 1) >= 10
+  exprs <- exprs_full[keep, ]
+
+  ### Shorten the sample id
+  rownames(pheno) <- abbreviate(gsub("TCGA-OR-", "", rownames(pheno)), method = "both")
+  pheno$id <- rownames(pheno)
+  colnames(exprs) <- abbreviate(gsub("TCGA-OR-", "", colnames(exprs)), method = "both")
+  
+  ### Remove extra columns (not groups)
+  pheno$sample <- pheno$id
+  pheno$id <- NULL
+  remove_cols <- c(
+    "patient", "updated_datetime", "updated_datetime.x", "updated_datetime.y", 
+    "barcode", "diagnosis_id", "demographic_id", "exposure_id", "bcr_patient_barcode", 
+    "morphology", "treatments", 
+    "days_to_birth", "days_to_last_follow_up", "days_to_death",
+    "year_of_birth", "year_of_diagnosis", "year_of_death"
+  )
+  pheno <- pheno[ , !(colnames(pheno) %in% remove_cols)]
+  pheno <- pheno[ , !(colnames(pheno) %in% colnames(pheno)[grep("_CHOL_del|_CHOL_amp|subtype_", colnames(pheno))])]
+
+  ### Save
+  saveRDS(exprs, paste0(i, "_exprs.rds"))
+  saveRDS(pheno, paste0(i, "_pheno.rds"))
+  
+  ### Add to list
+  exprsList[[i]]  <- exprs
+  phenoList[[i]] <- pheno
+  
+  ### Clean up
+  rm(exprs)
+  rm(exprs_full)
+  rm(pheno)
+  rm(pheno_full)
+  rm(keep)
+}
+
+### Save
+saveRDS(exprsList, "all_exprs.rds")
+saveRDS(phenoList, "all_pheno.rds")
+
+### Look at
+sapply(exprsList, dim)
+sapply(phenoList, dim)
+sapply(phenoList, names)
+
+### Write out names
+rbind(
+  paste("ACC:", toString(sort(names(phenoList$`TCGA-ACC`)))),
+  paste("CHOL:", toString(sort(names(phenoList$`TCGA-CHOL`)))),
+  paste("DLBC:", toString(sort(names(phenoList$`TCGA-DLBC`)))),
+  paste("KICH:", toString(sort(names(phenoList$`TCGA-KICH`)))),
+  paste("MESO:", toString(sort(names(phenoList$`TCGA-MESO`)))),
+  paste("UVM:", toString(sort(names(phenoList$`TCGA-UVM`))))
+) %>%
+  writeLines("sample_variables.txt")
+```
+
+
+## [EDIT AS TEAM] Pre-process data 
+
+Your entire team should use the same code for this section!
+
+### Load your dataset [edit!]
+
+```{r load_data}
+### EDIT: You need to insert your dataset file names in the quotes below
+
+exprs <- readRDS("TCGA-DLBC_exprs.rds")
+  "_exprs.rds"     # insert your *_exprs.rds dataset's file name here
+
+pheno <- readRDS("TCGA-DLBC_pheno.rds")
+  "_pheno.rds"     # insert your *_pheno.rds dataset's file name here
+```
+
+
+### Pick your group (variable of interest) [edit!]
+
+This should be a variable that is categorical with at least 2 categories and at least 3 samples in each category Use colnames(pheno) to find out what variable options you have. You can use one of the descriptive summary functions (from AE3) to determine how many categories there are for each group, and how many samples there are for each category.
+
+```{r select_group}
+### EDIT!! Copy your variable of interest into a new column called "group". This will help generalize/simplify your project's code
+pheno$group <- pheno$ann_arbor_b_symptoms # insert your variable's column name here
+```
+
+
+### Filter genes [edit!]
+
+Remove unexpressed genes or use your own filter (common to require FPKM > 1) - use whatever you wish!
+
+```{r filter_genes}
+### EDIT!
+
+```
+
+
+### Filter samples [edit if appropriate]
+
+Check for samples with missing data for your "group"
+
+```{r filter_samples}
+### You can check this using the following (many other ways to check too)
+### Make sure no "blanks" either -- 
+### sometimes missing data isn't converted to an NA but instead is just blank
+summary(as.factor(pheno$group))   
+table(is.na(pheno$group))
+```
+
+Remove samples with missing data for your "group"
+
+```{r filter_samples}
+### EDIT (if you have any samples with NA or blank for your group)
+
+
+```
+
+If you removed samples, you also need to remove them from the exprs data too!
+
+```{r filter_samples_genes}
+### EDIT (if you removed any samples above)
+
+
+```
+
+
+## [one team member does this] Team Member #1: Descriptive sample summary statistics
+
+Tasks:
+  a. Table summarizing phenoData, stratified by the categories in your group of interest, this should also include missing data
+  b. Determine statistically significant differences, using appropriate statistical tests (based on whether the value is continuous vs. discrete, how many groups are being tested, and whether the groups have equal variances)
+  c. Briefly describe the origin/source of the data (tumor type, the RNA-Seq performed to generate the expression data).
+  d. Describe the sample dataset using the summary table and statistical test results
+
+[enter code here, see AE3 to get started!]
+
+
+
+
+## [one team member does this] Team Member #2: Distribution
+
+Tasks:
+  a. Generate histogram, frequency plot, density plot, and density ridge plot of expression values for each category in your group of interest
+  b. Decide which best illustrates your distributions
+  c. Generate a final distribution figure to include in the manuscript
+  d. Indicate the mean and median in the figure, for each category in your group of interest
+  e. Determine distribution shapes (skewedness, kurtosis)
+
+[enter code here, see AE4 to get started!]
+
+
+
+
+## [one team member does this] Team Member #3: Hierarchical clustering
+
+Tasks:
+  a. Determine ideal clustering methods (including # clusters)
+  b. Generate a final figure of the clustering 
+  c. Provide table summarizing the number of samples in each cluster and the breakdown of samples by your group of interest
+  d. Interpret the clustering results
+
+[enter code here, see AE3 to get started!]
+
+
+
+
+
+## [one team member does this] Team Member #4: PCA
+
+Tasks:
+  a. Generate scree plot with Kaiser cutoff line
+  b. Determine number of PCs to use, using Kaiser cutoff
+  c. Generate PCA biplots for those PCs
+  d. Perform network correlation of PCs and sample pheno data
+  e. Interpret clustering patterns and relationship of PCs and pheno data to your group of interest using the PC biplots and correlation network plot
+
+[enter code here, see AE4 to get started!]
+
+
+
+
+## [one team member does this] Team Member #5: K-means clustering
+
+Only if you have 5 team members! 
+
+Tasks:
+  a. Determine ideal clustering methods (including k value)
+  b. Generate a final figure of the clustering 
+  c. Provide table summarizing the number of samples in each cluster and the breakdown of samples by your group of interest
+  d. Interpret is the clustering pattern in relation to your group of interest
+
+
+[enter code here, see AE3 to get started!]
+
+
+
+
+
+## Session info
+
+```{r sessioninfo}
+sessionInfo()
+```
