@@ -1,7 +1,7 @@
 ---
 title: "Group Project"
-author: "First Last"
-date: "09/01/2019"
+author: "Ronald Zambrano"
+date: "10/27/19"
 output:
   pdf_document: default
   word_document: default
@@ -24,13 +24,20 @@ Add whatever additional packages you need for your analysis
 ### EDIT!!
 
 ### We use the code chunk option "include=FALSE" because we don't need to print this information
-include=FALSE
 
 ### Global knitr options
 knitr::opts_chunk$set(echo = TRUE)
 
 ### Load packages/libraries that we will need
 library(tidyverse)
+library(skimr)      # data checking
+library(naniar)     # data cleaning
+library(janitor)    # data cleaning
+library(GGally)     # data viz
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering algorithms & visualization
+library(ggdendro)   # clustering visualization
+library(dendextend) # for comparing two dendrograms
 #  edit! Add whatever additional packages you need here (if you haven't loaded them, RMarkdown should alert you when you go to "knit" the RMarkdown to a report)
 ```
 
@@ -209,7 +216,17 @@ Remove unexpressed genes or use your own filter (common to require FPKM > 1) - u
 
 ```{r filter_genes}
 ### EDIT!
-
+keep <- exprs %>%
+  
+  # Remove sample~gene pairs with < 1 FPKM
+  filter(exprs >= 1) %>%
+  
+  # Count number of rows, which are the number of samples that express that gene at >= 0.5 FPKM
+  group_by(gene) %>%
+  summarise(n = n()) %>%
+  
+  # Only keep genes that have are expressed in all 48 samples
+  filter(n >= 48)
 ```
 
 
@@ -229,7 +246,8 @@ Remove samples with missing data for your "group"
 
 ```{r filter_samples}
 ### EDIT (if you have any samples with NA or blank for your group)
-
+pheno <- pheno %>%
+  filter(!is.na(ann_arbor_b_symptoms))
 
 ```
 
@@ -237,7 +255,8 @@ If you removed samples, you also need to remove them from the exprs data too!
 
 ```{r filter_samples_genes}
 ### EDIT (if you removed any samples above)
-
+exprs <- exprs %>%
+  filter(!is.na(ann_arbor_b_symptoms))
 
 ```
 
