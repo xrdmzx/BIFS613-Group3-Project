@@ -1,7 +1,7 @@
 ---
 title: "Group Project"
 author: "Ronald Zambrano"
-date: "10/27/19"
+date: "10/28/2019"
 output:
   pdf_document: default
   word_document: default
@@ -21,7 +21,7 @@ Notes:
 Add whatever additional packages you need for your analysis
 
 ```{r setup, include=FALSE}
-### EDIT!!
+### EDIT!!!
 
 ### We use the code chunk option "include=FALSE" because we don't need to print this information
 
@@ -38,6 +38,12 @@ library(cluster)    # clustering algorithms
 library(factoextra) # clustering algorithms & visualization
 library(ggdendro)   # clustering visualization
 library(dendextend) # for comparing two dendrograms
+library(viridis)       # Better plot colors
+library(ggbiplot)      # PCA plot
+library(corrr)         # Correlations
+library(ggridges)      # Density ridge plot
+library(ggpubr)        # Fancy plots
+library(psych)         # Distributions
 #  edit! Add whatever additional packages you need here (if you haven't loaded them, RMarkdown should alert you when you go to "knit" the RMarkdown to a report)
 ```
 
@@ -192,11 +198,12 @@ Your entire team should use the same code for this section!
 ```{r load_data}
 ### EDIT: You need to insert your dataset file names in the quotes below
 
-exprs <- readRDS("TCGA-DLBC_exprs.rds")
-  "_exprs.rds"     # insert your *_exprs.rds dataset's file name here
-
-pheno <- readRDS("TCGA-DLBC_pheno.rds")
-  "_pheno.rds"     # insert your *_pheno.rds dataset's file name here
+exprs <- readRDS(
+  "TCGA-DLBC_exprs.rds"     # EDIT: insert your *_exprs.rds dataset's file name here
+)
+pheno <- readRDS(
+  "TCGA-DLBC_pheno.rds"     # EDIT: insert your *_pheno.rds dataset's file name here
+)
 ```
 
 
@@ -206,27 +213,34 @@ This should be a variable that is categorical with at least 2 categories and at 
 
 ```{r select_group}
 ### EDIT!! Copy your variable of interest into a new column called "group". This will help generalize/simplify your project's code
-pheno$group <- pheno$ann_arbor_b_symptoms # insert your variable's column name here
+pheno$group <- pheno$ann_arbor_b_symptoms # EDIT: insert your variable's column name here
 ```
 
+### Convert expression matrix to tidy 
+
+```{r tidy}
+### Don't edit
+
+### Create tibble with expression and pheno data
+tidy <- exprs %>% 
+  
+  # Convert expression matrix to tidy tibble
+  as_tibble(rownames = "gene") %>%
+  gather("sample", "fpkm", -gene)  %>%
+
+  # Add phenoData
+  inner_join(pheno, by = "sample")
+```
 
 ### Filter genes [edit!]
 
-Remove unexpressed genes or use your own filter (common to require FPKM > 1) - use whatever you wish!
+Remove unexpressed genes or use your own filter (common to require FPKM > 1 in at least a few samples) - use whatever you wish!
 
 ```{r filter_genes}
 ### EDIT!
-keep <- exprs %>%
-  
-  # Remove sample~gene pairs with < 1 FPKM
-  filter(exprs >= 1) %>%
-  
-  # Count number of rows, which are the number of samples that express that gene at >= 0.5 FPKM
-  group_by(gene) %>%
-  summarise(n = n()) %>%
-  
-  # Only keep genes that have are expressed in all 48 samples
-  filter(n >= 48)
+
+tidy <- tidy %>% 
+  filter(exprs >= 1) # EDIT: add filter here
 ```
 
 
@@ -235,29 +249,45 @@ keep <- exprs %>%
 Check for samples with missing data for your "group"
 
 ```{r filter_samples}
+### Don't edit
+
 ### You can check this using the following (many other ways to check too)
 ### Make sure no "blanks" either -- 
 ### sometimes missing data isn't converted to an NA but instead is just blank
-summary(as.factor(pheno$group))   
-table(is.na(pheno$group))
+summary(as.factor(tidy$group)) # look for blanks, no data, etc. categories
+table(is.na(tidy$group))
 ```
 
-Remove samples with missing data for your "group"
+Remove samples with missing data (or no data; i.e. "not reported") for your "group"
 
 ```{r filter_samples}
 ### EDIT (if you have any samples with NA or blank for your group)
+
+#Remove "not reported stage"
+tidy <- tidy %>% 
+  filter(!group == "not reported") # EDIT: add filter(s) here to remove NAs and samples with no data
 pheno <- pheno %>%
   filter(!is.na(ann_arbor_b_symptoms))
-
 ```
 
-If you removed samples, you also need to remove them from the exprs data too!
+### Convert back to matrix (some analyses use matrices rather than tidy data)
 
-```{r filter_samples_genes}
-### EDIT (if you removed any samples above)
-exprs <- exprs %>%
-  filter(!is.na(ann_arbor_b_symptoms))
+```{r matrices}
+### Don't edit
 
+### Convert expression data to wide/matrix
+exprs_mat <- tidy %>%
+  select(gene, sample, fpkm) %>%
+  spread(sample, fpkm) %>%
+  column_to_rownames("gene") %>%
+  as.matrix()
+
+### Convert phenoData to wide table
+pheno_mat <- tidy %>%
+  select(-one_of(c("gene", "fpkm"))) %>%
+  distinct() %>%
+  data.frame()
+rownames(pheno_mat) <- pheno_mat$sample
 ```
 
 
