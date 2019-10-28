@@ -216,20 +216,8 @@ Remove unexpressed genes or use your own filter (common to require FPKM > 1) - u
 
 ```{r filter_genes}
 ### EDIT!
-exprs <- exprs %>%
-  
-  # Remove sample~gene pairs with < 1 FPKM
-  filter(exprs >= 1) %>%
-  
-  # Count number of rows, which are the number of samples that express that gene at >= 0.5 FPKM
-  group_by(gene) %>%
-  summarise(n = n()) %>%
-  
-  # Only keep genes that have are expressed in all 48 samples
-  filter(n >= 48)
 
-exprs <- exprs %>% 
-  filter(gene %in% exprs$gene)
+
 ```
 
 
@@ -250,7 +238,7 @@ Remove samples with missing data for your "group"
 ```{r filter_samples}
 ### EDIT (if you have any samples with NA or blank for your group)
 pheno <- pheno %>%
-  filter(!is.na(age), !is.na(ann_arbor_b_symptoms))
+  filter(!is.na(ann_arbor_b_symptoms))
 
 ```
 
@@ -258,8 +246,7 @@ If you removed samples, you also need to remove them from the exprs data too!
 
 ```{r filter_samples_genes}
 ### EDIT (if you removed any samples above)
-exprs <- exprs %>%
-  filter(!is.na(age), !is.na(ann_arbor_b_symptoms))
+
 
 ```
 
