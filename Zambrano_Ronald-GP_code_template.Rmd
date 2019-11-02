@@ -88,7 +88,7 @@ If you are having trouble loading the exprs_tidy file below, manually override t
   
 ```{r fix_setwd}
 ### EDIT if necessary
-#setwd("~/Documents/School/BIFS613/BIFS613- Group Project")
+setwd("~/Documents/School/BIFS613/BIFS613- Group Project")
 ```
 
 
@@ -290,7 +290,7 @@ rownames(pheno_mat) <- pheno_mat$sample
 ```
 
 
-## [one team member does this] Team Member #1: Descriptive sample summary statistics
+## [one team member does this] Team Member #1 (Ronald Zambrano): Descriptive sample summary statistics
 
 Tasks:
   a. Table summarizing phenoData, stratified by the categories in your group of interest, this should also include missing data
@@ -300,8 +300,71 @@ Tasks:
 
 [enter code here, see AE3 to get started!]
 
+### a. Table summarizing phenoData, stratified by the categories in your group of interest, this should also include missing data
+```{r Descriptive sample summary statistics A}
+
+phenoData <- pheno %>%
+  # stratify categories of interest
+  select(ann_arbor_b_symptoms, age_at_index) 
+  
+  # print table of pheno data
+  table(phenoData)
+  
+  # print percentage of ann arbor b symptoms
+  janitor::tabyl(phenoData$ann_arbor_b_symptoms)
+  
+  # print percentage of age at index
+  janitor::tabyl(phenoData$age_at_index)
+  
+  # print summary table of pheno data
+  summary(phenoData)
+
+```
 
 
+### b. Determine statistically significant differences, using appropriate statistical tests (based on whether the value is continuous vs. discrete, how many groups are being tested, and whether the groups have equal variances)
+```{r Descriptive sample summary statistics B}
+
+  # remove NAs so that statistics functions don't bug out
+  phenoData <- phenoData %>%
+    filter(!is.na(ann_arbor_b_symptoms))
+
+  # convert ann_arbor_symptoms to factor rather than the default character assignation
+  phenoData$ann_arbor_b_symptoms <- forcats::as_factor(phenoData$ann_arbor_b_symptoms)
+
+  # print skim summary statistics
+  phenoData %>%
+    group_by(ann_arbor_b_symptoms) %>%
+    skim(age_at_index)
+
+  # print ggplots for ann arbor b symptoms and age at index
+  phenoData %>%
+    select(ann_arbor_b_symptoms, age_at_index ) %>%
+    ggpairs()
+  
+  # descriptive statistics of pheno data
+  describe(phenoData)
+
+  # descriptive statistics of age at index by ann arbor b symptoms
+  describeBy(phenoData, group = phenoData$ann_arbor_b_symptoms)
+  
+  
+```
+
+
+### c. Briefly describe the origin/source of the data (tumor type, the RNA-Seq performed to generate the expression data).
+```{r Descriptive sample summary statistics C}
+# The source of our data was taken from DLBLC lymphoma tissue biopsy samples which were collected from patient lymph nodes primarily, but also from nervous system tissue, digestive tract, glands, and more. The DLBCL gene expression dataset has over 14,000 recorded gene expression levels from the aformentioned DLBCL tissue biopsies. Aligned sequencing reads for RNA (RNA-Seq) were primarily performed on the Illumina platform.
+```
+
+
+### d. Describe the sample dataset using the summary table and statistical test results
+```{r Descriptive sample summary statistics D}
+  # Descriptive sample statistics anlyses highlighted some key similarites and differences between patient's exhibiting ann arbor b symptoms, and those who did not at the time of index. Overall, in 76% of the valid samples the patients did not exhibit Ann Arbor B symptoms. The average age of the patient who provided the tissue is 56.27 years. Now, when comparing within groups, several differences stand out besides the difference in count. The mean age for patients with symptoms was older, 58.45 in sympotomatic patients versus 55.2 in asymptomatic patients. Despite there being patients from the age of 23 to 82, the youngest age in which patients exhibited ann arbor b symptoms was 42 years. Additionally, when looking at each ann arbor b symptom group's kurtosis, symptomatic patients had a significantly left leaning distribution with a kurtosis of -1.54 versus -0.79.
+
+
+
+```
 
 ## [one team member does this] Team Member #2: Distribution
 
