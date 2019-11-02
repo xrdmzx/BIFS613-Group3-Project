@@ -287,6 +287,15 @@ pheno_mat <- tidy %>%
   distinct() %>%
   data.frame()
 rownames(pheno_mat) <- pheno_mat$sample
+
+### Fix order of samples, so they match
+table(colnames(exprs_mat) == rownames(pheno_mat)) 
+
+# check
+pheno_mat <- pheno_mat[order(rownames(pheno_mat), colnames(exprs_mat)), ] 
+
+# fix
+table(colnames(exprs_mat) == rownames(pheno_mat)) # check
 ```
 
 
@@ -360,10 +369,7 @@ phenoData <- pheno %>%
 
 ### d. Describe the sample dataset using the summary table and statistical test results
 ```{r Descriptive sample summary statistics D}
-  # Descriptive sample statistics anlyses highlighted some key similarites and differences between patient's exhibiting ann arbor b symptoms, and those who did not at the time of index. Overall, in 76% of the valid samples the patients did not exhibit Ann Arbor B symptoms. The average age of the patient who provided the tissue is 56.27 years. Now, when comparing within groups, several differences stand out besides the difference in count. The mean age for patients with symptoms was older, 58.45 in sympotomatic patients versus 55.2 in asymptomatic patients. Despite there being patients from the age of 23 to 82, the youngest age in which patients exhibited ann arbor b symptoms was 42 years. Additionally, when looking at each ann arbor b symptom group's kurtosis, symptomatic patients had a significantly left leaning distribution with a kurtosis of -1.54 versus -0.79.
-
-
-
+  # Descriptive sample statistics anlyses highlighted some key similarites and differences between patient's exhibiting ann arbor b symptoms, and those who did not at the time of index. Overall, in 76% of the valid samples the patients did not exhibit Ann Arbor B symptoms. The average age of the patient who provided the tissue is 56.27 years. Now, when comparing within groups, several differences stand out besides the difference in count. The mean age for patients with symptoms was older, 58.45 in sympotomatic patients versus 55.2 in asymptomatic patients. Despite there being patients from the age of 23 to 82, the youngest age in which patients exhibited ann arbor b symptoms was 42 years. Additionally, when looking at each ann arbor b symptom group's kurtosis, symptomatic patients had a significantly left leaning distribution with a kurtosis of -1.54 versus -0.79, meaning it has a lighter tails than normal distribution.
 ```
 
 ## [one team member does this] Team Member #2: Distribution
