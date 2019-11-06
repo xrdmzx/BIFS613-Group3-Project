@@ -1,7 +1,7 @@
 ---
-title: "Group Project"
+title: "Team 3 Group Project"
 author: "Ronald Zambrano"
-date: "10/28/2019"
+date: "11/5/2019"
 output:
   pdf_document: default
   word_document: default
@@ -206,14 +206,14 @@ pheno <- readRDS(
 )
 ```
 
-
 ### Pick your group (variable of interest) [edit!]
 
 This should be a variable that is categorical with at least 2 categories and at least 3 samples in each category Use colnames(pheno) to find out what variable options you have. You can use one of the descriptive summary functions (from AE3) to determine how many categories there are for each group, and how many samples there are for each category.
 
 ```{r select_group}
 ### EDIT!! Copy your variable of interest into a new column called "group". This will help generalize/simplify your project's code
-pheno$group <- pheno$ann_arbor_b_symptoms # EDIT: insert your variable's column name here
+
+pheno$group <- pheno$ann_arbor_b_symptoms  # EDIT: insert your variable's column name here
 ```
 
 ### Convert expression matrix to tidy 
@@ -232,18 +232,6 @@ tidy <- exprs %>%
   inner_join(pheno, by = "sample")
 ```
 
-### Filter genes [edit!]
-
-Remove unexpressed genes or use your own filter (common to require FPKM > 1 in at least a few samples) - use whatever you wish!
-
-```{r filter_genes}
-### EDIT!
-
-tidy <- tidy %>% 
-  filter(exprs >= 1) # EDIT: add filter here
-```
-
-
 ### Filter samples [edit if appropriate]
 
 Check for samples with missing data for your "group"
@@ -258,15 +246,21 @@ summary(as.factor(tidy$group)) # look for blanks, no data, etc. categories
 table(is.na(tidy$group))
 ```
 
-Remove samples with missing data (or no data; i.e. "not reported") for your "group" 
+Remove samples with missing data (or no data; i.e. "not reported") for your "group"
 
 ```{r filter_samples}
 ### EDIT (if you have any samples with NA or blank for your group)
 
-# You have no "not reported", so don't need that
-
-tidy <- tidy %>%
-  filter(!is.na(ann_arbor_b_symptoms)) # changed from "pheno" to "tidy"
+tidy <- tidy %>% 
+  filter(
+    
+    # EDIT: add filter(s) here to remove NAs and samples with no data, below are common examples of how missing data is listed in phenoData. Make sure you don't need any additional filters to remove missing data for your "group"
+    
+    group != "not reported",    # some samples may have missing data listed as "not reported"
+    !is.na(group),              # some may have missing data listed as NA
+    group != ""                 # some may have blanks
+    
+  )
 ```
 
 ### Convert back to matrix (some analyses use matrices rather than tidy data)
@@ -277,7 +271,7 @@ tidy <- tidy %>%
 ### Convert expression data to wide/matrix
 exprs_mat <- tidy %>%
   select(gene, sample, fpkm) %>%
-  spread(sample, fpkm) %>%
+  spread(sample, fpkm, fill = 0) %>%
   column_to_rownames("gene") %>%
   as.matrix()
 
@@ -289,15 +283,28 @@ pheno_mat <- tidy %>%
 rownames(pheno_mat) <- pheno_mat$sample
 
 ### Fix order of samples, so they match
-table(colnames(exprs_mat) == rownames(pheno_mat)) 
-
-# check
-pheno_mat <- pheno_mat[order(rownames(pheno_mat), colnames(exprs_mat)), ] 
-
-# fix
+table(colnames(exprs_mat) == rownames(pheno_mat)) # check
+pheno_mat <- pheno_mat[order(rownames(pheno_mat), colnames(exprs_mat)), ] # fix
 table(colnames(exprs_mat) == rownames(pheno_mat)) # check
 ```
 
+### Filter genes
+
+Here, we'll only keep genes that are expressed at >= 1 FPKM in at least 20 samples.
+
+```{r filter_genes_fixed}
+### Don't edit
+
+### Count # genes pre-filtering
+nrow(exprs_mat)
+
+exprs_mat <- exprs_mat[rowSums(exprs_mat > 1) > 20, ]
+
+### Count # genes post-filtering
+nrow(exprs_mat)
+```
+
+## [one team member does this] Team Member #1: Descriptive sample summary statistics
 
 ## [one team member does this] Team Member #1 (Ronald Zambrano): Descriptive sample summary statistics
 
@@ -371,6 +378,11 @@ phenoData <- pheno %>%
 ```{r Descriptive sample summary statistics D}
   # Descriptive sample statistics anlyses highlighted some key similarites and differences between patient's exhibiting ann arbor b symptoms, and those who did not at the time of index. Overall, in 76% of the valid samples the patients did not exhibit Ann Arbor B symptoms. The average age of the patient who provided the tissue is 56.27 years. Now, when comparing within groups, several differences stand out besides the difference in count. The mean age for patients with symptoms was older, 58.45 in sympotomatic patients versus 55.2 in asymptomatic patients. Despite there being patients from the age of 23 to 82, the youngest age in which patients exhibited ann arbor b symptoms was 42 years. Additionally, when looking at each ann arbor b symptom group's kurtosis, symptomatic patients had a significantly left leaning distribution with a kurtosis of -1.54 versus -0.79, meaning it has a lighter tails than normal distribution.
 ```
+
+
+
+
+
 
 ## [one team member does this] Team Member #2: Distribution
 
