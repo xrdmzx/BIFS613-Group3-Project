@@ -1,7 +1,7 @@
 ---
 title: "Team 3 Group Project"
 author: "Ronald Zambrano"
-date: "11/5/2019"
+date: "11/14/2019"
 output:
   pdf_document: default
   word_document: default
@@ -304,8 +304,6 @@ exprs_mat <- exprs_mat[rowSums(exprs_mat > 1) > 20, ]
 nrow(exprs_mat)
 ```
 
-## [one team member does this] Team Member #1: Descriptive sample summary statistics
-
 ## [one team member does this] Team Member #1 (Ronald Zambrano): Descriptive sample summary statistics
 
 Tasks:
@@ -364,9 +362,10 @@ phenoData <- pheno %>%
   # descriptive statistics of age at index by ann arbor b symptoms
   describeBy(phenoData, group = phenoData$ann_arbor_b_symptoms)
   
-  
-```
+### Significantly different age in the groups?
+t.test(pheno$age_at_diagnosis ~ pheno$ann_arbor_b_symptoms)
 
+```
 
 ### c. Briefly describe the origin/source of the data (tumor type, the RNA-Seq performed to generate the expression data).
 ```{r Descriptive sample summary statistics C}
