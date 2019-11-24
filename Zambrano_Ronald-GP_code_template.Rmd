@@ -221,7 +221,7 @@ pheno$group <- pheno$ann_arbor_b_symptoms  # EDIT: insert your variable's column
 ### Convert expression matrix to tidy 
 
 ```{r tidy}
-### Don't edit
+### Don't edit 
 
 ### Create tibble with expression and pheno data
 tidy <- exprs %>% 
