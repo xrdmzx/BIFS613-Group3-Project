@@ -1,10 +1,12 @@
 ---
 title: "Team 3 Group Project"
-author: "Ronald Zambrano"
-date: "11/14/2019"
+author: "Jacquelyn Cintron, Mireille Nkamsi, and Ronald Zambrano"
+date: "11/24/2019"
 output:
-  pdf_document: default
   word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
 editor_options:
   chunk_output_type: console
 ---
@@ -88,7 +90,7 @@ If you are having trouble loading the exprs_tidy file below, manually override t
   
 ```{r fix_setwd}
 ### EDIT if necessary
-setwd("~/Documents/School/BIFS613/BIFS613- Group Project")
+#setwd("~/Documents/School/BIFS613/BIFS613- Group Project")
 ```
 
 
@@ -236,7 +238,7 @@ tidy <- exprs %>%
 
 Check for samples with missing data for your "group"
 
-```{r filter_samples}
+```{r filter_samples 1}
 ### Don't edit
 
 ### You can check this using the following (many other ways to check too)
@@ -248,7 +250,7 @@ table(is.na(tidy$group))
 
 Remove samples with missing data (or no data; i.e. "not reported") for your "group"
 
-```{r filter_samples}
+```{r filter_samples 2}
 ### EDIT (if you have any samples with NA or blank for your group)
 
 tidy <- tidy %>% 
@@ -363,7 +365,7 @@ phenoData <- pheno %>%
   describeBy(phenoData, group = phenoData$ann_arbor_b_symptoms)
   
 ### Significantly different age in the groups?
-t.test(pheno$age_at_diagnosis ~ pheno$ann_arbor_b_symptoms)
+  t.test(pheno$age_at_diagnosis ~ pheno$ann_arbor_b_symptoms)
 
 ```
 
@@ -383,64 +385,430 @@ t.test(pheno$age_at_diagnosis ~ pheno$ann_arbor_b_symptoms)
 
 
 
-## [one team member does this] Team Member #2: Distribution
+## Team Member #2: Distribution
 
-Tasks:
-  a. Generate histogram, frequency plot, density plot, and density ridge plot of expression values for each category in your group of interest
-  b. Decide which best illustrates your distributions
-  c. Generate a final distribution figure to include in the manuscript
-  d. Indicate the mean and median in the figure, for each category in your group of interest
-  e. Determine distribution shapes (skewedness, kurtosis)
+### Prepare data
 
-[enter code here, see AE4 to get started!]
+```{r}
+### Calculate log2(FPKM)
+tidy$logFPKM <- log2(tidy$fpkm + 0.00001) # add small value to prevent the "-Inf" caused by log2(0)
+```
 
+###  a. Generate histogram, frequency plot, density plot, and density ridge plot of expression values for each category in your group of interest
 
+Note from Alexis: You almost had this part. The error you had was plotting by sample for color/fill instead of by group.
 
+Histogram
 
-## [one team member does this] Team Member #3: Hierarchical clustering
+```{r histogram}
+tidy %>%
+  ggplot(aes(x = logFPKM, color = group, fill = group)) +
+  geom_histogram(alpha = 0.2)
+ggsave("histogram.png")
+```
+
+Frequency plot
+
+```{r frequency_plot}
+tidy %>%
+  ggplot(aes(x = logFPKM,  color = group, fill = group)) +
+  geom_freqpoly()
+ggsave("freqplot.png")
+```
+
+Density plot
+
+```{r density_plot}
+tidy %>%
+  ggplot(aes(x = logFPKM,  color = group, fill = group)) +
+  geom_density(alpha = 0.2)
+ggsave("density.png")
+```
+
+Density ridge plot with mean and median indicated
+
+```{r density_mean}
+### DON'T EDIT CODE IN THIS CHUNK
+
+### Add mean and median to our ridges plot
+tidy %>%
+  ggplot(aes(x = logFPKM,  y = group, color = group, fill = group)) +
+  geom_density_ridges(alpha = 0.2, show.legend = FALSE) +
+
+  # Add mean as line
+  ggpubr::stat_central_tendency(
+    type = "mean", 
+    geom = "line",
+    show.legend = FALSE
+  ) +
+
+  # Add median as triange at bottom
+  ggpubr::stat_central_tendency(
+    type = "median", 
+    geom = "point", size = 5, shape = 17, 
+    show.legend = FALSE
+  ) 
+ggsave("ridges_means_medians.png")
+```
+
+###  b. Decide which best illustrates your distributions
+
+Add this sentence to the results section. (I suggest using the density plot with means and medians)
+
+###  c. Generate a final distribution figure to include in the manuscript
+
+Use the figure that you describe in b.
+
+###  d. Indicate the mean and median in the figure, for each category in your group of interest
+
+See the density ridge plot above.
+
+###  e. Determine distribution shapes (skewedness, kurtosis)
+
+Add intepretation of the results below to the results section. 
+
+```{r dist_shape}
+### Normality: Skewed/Kurtosis-peaked-vs-normal-distribution
+shapes <- lapply(unique(tidy$group), function (x) {
+  describe(tidy$logFPKM[tidy$group == x])
+}) 
+cbind.data.frame("group" = unique(tidy$group), bind_rows(shapes))
+```
+
+## Team Member #3: Hierarchical clustering
 
 Tasks:
   a. Determine ideal clustering methods (including # clusters)
-  b. Generate a final figure of the clustering 
+  b. Generate a final figure of the clustering
   c. Provide table summarizing the number of samples in each cluster and the breakdown of samples by your group of interest
   d. Interpret the clustering results
 
-[enter code here, see AE3 to get started!]
+### Prepare data
 
+```{r hc_prep}
+### Check for missing/infinite data
+table(is.na(exprs))
 
+### Transpose matrix so that we're clustering samples (not genes)
+exprs_mat <- t(exprs)
 
+### Log transform
+exprs_mat <-log(exprs_mat + 0.0001, base = 2)
 
+### Scale
+set.seed(1234)
+exprs_mat <- scale(exprs_mat)
+```
 
-## [one team member does this] Team Member #4: PCA
+### Compare HC methods
 
-Tasks:
-  a. Generate scree plot with Kaiser cutoff line
-  b. Determine number of PCs to use, using Kaiser cutoff
-  c. Generate PCA biplots for those PCs
-  d. Perform network correlation of PCs and sample pheno data
-  e. Interpret clustering patterns and relationship of PCs and pheno data to your group of interest using the PC biplots and correlation network plot
+```{r hc_options}
+### Vector of all HC methods that agnes() allows
+agnes_methods <- c("average", "single", "complete", "ward", "weighted")
+```
+```{r hc_method}
+### Try all combinations
+for (i in agnes_methods) {
+  
+  # Reproducibility
+  set.seed(1234)
 
-[enter code here, see AE4 to get started!]
+  # Run 
+  hc <- exprs_mat %>%
+    agnes(method = i, metric = "euclidean")
+  
+  # Plot
+  plot_hc <- hc %>%
+    as.dendrogram() %>%
+    ggdendrogram(rotate = FALSE, size = 2) +
+    
+    # Title includes hc method used
+    # and the agglomerative coefficient (rounded to 2 decimals)
+    ggtitle(paste("HC:", i, round(hc$ac, 2))) 
 
+  # Print plot
+  print(plot_hc)
+  
+  # Save plot
+  ggsave(paste0("hc_plot_", i, ".png"))
+}
+```
 
+### Choose optimal HC method
 
+[update based on prev] (the HC method above with the highest agglomerative coefficient)
 
-## [one team member does this] Team Member #5: K-means clustering
+```{r hc_method_final}
+final_hc_method <- "ward"
+```
 
-Only if you have 5 team members! 
+### Compare distance methods for final HC method
 
-Tasks:
-  a. Determine ideal clustering methods (including k value)
-  b. Generate a final figure of the clustering 
-  c. Provide table summarizing the number of samples in each cluster and the breakdown of samples by your group of interest
-  d. Interpret is the clustering pattern in relation to your group of interest
+```{r hc_final_dist}
+### Run
+dend_euc <- exprs_mat %>%
+  agnes(method = final_hc_method, metric = "euclidean") %>%
+  as.dendrogram()
+dend_man <- exprs_mat %>%
+  agnes(method = final_hc_method, metric = "manhattan") %>%
+  as.dendrogram()
 
+### Plot together
+dend_list <- dendlist(dend_euc, dend_man)
+tanglegram(
+  dend_euc, dend_man,
+  highlight_distinct_edges = FALSE,       # Turn-off dashed lines
+  common_subtrees_color_lines = FALSE,    # Turn-off line colors
+  common_subtrees_color_branches = TRUE,  # Color common branches 
+  main = paste(
+    "entanglement =", 
+    round(entanglement(dend_list), 2)
+  )
+)
+ggsave("tanglegram.png")
+```
 
-[enter code here, see AE3 to get started!]
+### Determining optimal clusters
 
+Method 1: WSS ("elbow") method
 
+```{r hc_wss}
+set.seed(1234)
+fviz_nbclust(exprs_mat, FUN = hcut, method = "wss")
+ggsave("hc_wss_plot.png")
+```
 
+Method: Gap Statistic Method
 
+```{r hc_gap}
+set.seed(1234)
+fviz_nbclust(exprs_mat, FUN = hcut, nboot = 50, method = "gap_stat")
+ggsave("hc_gapstat_plot.png")
+```
+
+[update based on prev] Set optimal # clusters
+
+```{r hc_final_cluster}
+n_clust <- 2
+```
+
+### Final HC result 
+
+```{r hc_final}
+### Calculate HC
+hc_final <- agnes(exprs_mat, method = final_hc_method, metric = "euclidean")
+
+### Cut tree
+hc_final_clusters <- cutree(hc_final, k = n_clust)
+
+### View tree 
+clust.df <- data.frame(
+  label = names(hc_final_clusters), 
+  cluster = factor(hc_final_clusters)
+)
+dendr <- as.ggdend(as.dendrogram(hc_final))
+dendr[["labels"]] <- merge(
+  dendr[["labels"]], 
+  clust.df, 
+  by = "label"
+)
+ggplot() + 
+  geom_segment(
+    data = segment(dendr), 
+    aes(x = x, y = y, xend = xend, yend = yend)
+  ) + 
+  
+  # Label clusters
+  geom_text(
+    data = label(dendr), 
+    aes(x, y, label = label, color = cluster), 
+    size = 3, hjust = 0
+  ) +
+  
+  # Flip axes
+  coord_flip() + 
+  
+  # Formating
+  scale_y_reverse(expand = c(0.2, 0)) + 
+  theme_classic() +
+  theme(
+    axis.line.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.title = element_blank()
+  )
+ggsave("hc_dendro.png")
+```
+
+### Summarize cluster assignments by group
+
+Add cluster assignments to phenoData
+
+```{r}
+### Add column for HC clusters
+res_clusters <- pheno %>%
+  mutate(
+    hc_cluster = paste0("cluster_", hc_final_clusters)
+  )
+```
+
+As table
+
+```{r}
+### Get absolute number of samples in each cluster by group
+res_clusters %>%
+  select(group, hc_cluster) %>% 
+  table()
+```
+
+[update based on prev] As figure
+
+```{r}
+### Visualize percent of samples in each cluster by group
+res_clusters %>%
+  
+  # Get percent of samples in each group in each cluster
+  dplyr::group_by(group, hc_cluster) %>% 
+  dplyr::summarise(n = n()) %>%
+  spread(hc_cluster, n) %>%
+  mutate(n_samples = sum(cluster_1, cluster_2, na.rm = TRUE)) %>%
+  mutate(
+    cluster_1 = round(100*cluster_1/n_samples),
+    cluster_2 = round(100*cluster_2/n_samples)
+  ) %>%
+  select(group, n_samples, dplyr::everything()) %>%
+  gather(cluster, percent, -group, -n_samples) %>%
+  
+  # Plot
+  ggplot(aes(x = cluster, y = group, fill = percent)) +
+  geom_tile() +
+  
+  # Formatting
+  theme_classic() +
+  ggtitle(paste0("Clustering by Group (", n_clust, " clusters)")) +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0))
+ggsave("hc_cluster_tile.png")
+```
+
+## Team Member #4: PCA
+Tasks: a. Generate scree plot with Kaiser cutoff line b. Determine number of PCs to use, using Kaiser cutoff c. Generate PCA biplots for those PCs d. Perform network correlation of PCs and sample pheno data e. Interpret clustering patterns and relationship of PCs and pheno data to your group of interest using the PC biplots and correlation network plot
+
+```{r Prepare data}
+### Log transform
+exprs_mat <- log2(exprs + 0.0001)
+### Transpose so that we're clustering samples (not genes)
+exprs_mat <- t(exprs_mat)
+```
+
+```{Run PCA}
+set.seed(1116)
+pca_obj <- prcomp(
+  exprs_mat, 
+  scale. = TRUE, 
+  center = TRUE
+)
+###Summary
+summary(pca_obj)
+
+##Scree plot
+Comment from Alexis: the Kaiser cutoff is the horizontal line at 0.1, not the total number of PCs identified. So the cutoff is at PC2 not PC46.
+### Calculate variance explained (ve) for each PC
+ve <- pca_obj$sdev^2 
+### Create table (dataframe called "ve") of variance explained measures (using SD values), so we can plot them
+df_ve <- data.frame(
+  PC = as_factor(1:length(ve)),    # PC 
+  PVE = ve / sum(ve)               # proportion ve
+) 
+### Plot
+df_ve %>%
+  ggplot(aes(x = PC, y = PVE, fill = PC)) + 
+  geom_col(show.legend = FALSE) +
+  
+  # add kaiser criterion line
+  geom_hline(yintercept = 0.1) +
+  
+  # add plot title
+  labs(title = "Scree plot")
+
+### Biplot for PC1 vs. PC2
+pca_obj %>% 
+  ggbiplot(
+    choices = 1:2, 
+    groups = pheno$group,
+    ellipse = TRUE,
+    var.axes = FALSE
+  ) 
+ 
+pca_obj %>% 
+  ggbiplot(
+    choices = 1:2, 
+    groups = pheno$group,
+    labels = pheno$sample,
+    labels.size = 3,
+    ellipse = TRUE,
+    var.axes = FALSE
+  ) 
+ 
+####Correlate PCs to phenoData (known sample variables)
+
+#### Run
+### PC results to phenoData
+pca_obj_pheno <- pheno %>%
+  
+  # Just some phenoData variables 
+  select(
+    group, age_at_diagnosis, gender, race,
+    ann_arbor_clinical_stage, ann_arbor_b_symptoms,
+    ann_arbor_extranodal_involvement,
+    site_of_resection_or_biopsy
+  ) %>%
+  
+  # Just the first 5 PCs (so the first 5 columns)
+  # First need to convert the pca results from matrix to tibble/data.frame
+  bind_cols(as_tibble(pca_obj$x[ , 1:5]))
+### Convert non-numberic values (characters, factors) to numberic values
+for (i in names(pca_obj_pheno)) {
+  if(is.factor(pca_obj_pheno[[i]])) {
+    pca_obj_pheno[[i]] <- as.numeric(pca_obj_pheno[[i]])
+  }
+  if(is.character(pca_obj_pheno[[i]])) {
+    pca_obj_pheno[[i]] <- as.numeric(as.factor(pca_obj_pheno[[i]]))
+  }
+}
+### Run correlation
+set.seed(1116)
+pca_corr <- pca_obj_pheno %>%
+  correlate(method = "pearson") 
+## 
+## Correlation method: 'pearson'
+## Missing treated using: 'pairwise.complete.obs'
+
+#### Barplot
+### Plot
+pca_corr %>% 
+  # "focusing" on group of interest
+  focus(group) %>%
+  
+  # "gather" (create a single column) of phenoData variables ("vars")
+  # with their pearson's correlation ("value") for each PC in second column
+  # rowname = PC#
+  gather(var, value, -rowname) %>%
+  
+  # Plot
+  ggplot(aes(rowname, value, color = var, fill = var)) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs( 
+    x = NULL, # Remove 
+    y = "Pearson's correlation",
+    title = "Correlation of sample information to the first five PCs"
+  ) +
+  scale_y_continuous(limits = c(-1, 1))
+ 
+#### Network plot
+network_plot(pca_corr)
+``` 
 
 ## Session info
 
